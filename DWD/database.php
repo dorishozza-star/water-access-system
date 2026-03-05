@@ -1,12 +1,15 @@
 <?php
 $host = "localhost";
-$user = "root";
-$password = "";
-$dbname = "water_access_system";
+$dbname = "WABMS";  // Make sure this matches your DB name
+$user = "root";                   // Your MySQL username
+$pass = "";                        // Your MySQL password (often empty for XAMPP)
 
-$conn = mysqli_connect($host, $user, $password, $dbname);
-
-if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
+try {
+    $conn = new PDO("mysql:host=$host;dbname=$dbname", $user, $pass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // echo "Connected successfully"; // optional for testing
+} catch(PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+    exit();
 }
 ?>

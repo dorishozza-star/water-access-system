@@ -23,23 +23,42 @@ if ($_SESSION['role'] !== 'community') {
           </p>";
     exit();
 }
-?>
 
+include("../database.php");
+
+// Fetch dynamic counts for the cards
+$stmt1 = $conn->prepare("SELECT COUNT(*) as total_issues FROM maintenance_tasks");
+$stmt1->execute();
+$totalIssues = $stmt1->fetch(PDO::FETCH_ASSOC)['total_issues'];
+
+$stmt2 = $conn->prepare("SELECT COUNT(*) as total_reports FROM maintenance_tasks WHERE status IN ('Pending','In progress','Completed')");
+$stmt2->execute();
+$totalReports = $stmt2->fetch(PDO::FETCH_ASSOC)['total_reports'];
+?>
 
 <?php include("../includes/header.php"); ?>
 
 <div class="dashboard-container">
-<?php include("../includes/sidebar.php"); ?>
+    <?php include("../includes/sidebar.php"); ?>
 
-<main class="dashboard">
-    <h2>Community Dashboard</h2>
-    <p>Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>!</p>
+    <main class="dashboard">
+        <h2>Community Dashboard</h2>
+        <p>Welcome, <?php echo htmlspecialchars($_SESSION['username']); ?>!</p>
 
-    <div class="cards">
-        <div class="card">Report an Issue</a
-        ></div>
-        <div class="card">View My Reports</a></div>
-    </div>
-</main>
+        <!-- Dynamic Cards Section -->
+        <div class="cards" style="margin-top:20px;"  >
+            <div class="card">
+                <h3>Total Issues Reported</h3>
+                <?php echo $totalIssues; ?>
+            </div>
+            <div class="card">
+                <h3>Total Reports Present</h3>
+                <?php echo $totalReports; ?>
+            </div>
+        </div>
+
+        
+    </main>
 </div>
+
 <?php include("../includes/footer.php"); ?>

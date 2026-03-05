@@ -1,66 +1,61 @@
+
 <?php
 session_start();
 
-function redirectToLogin() {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You must log in to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a> or 
-            <a href='/DWD/login.php'>Login</a>
-          </p>";
-    exit();
+// Only community can access
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'community') {
+    die("Access denied.");
 }
 
-// Check if logged in
-if (!isset($_SESSION['role'])) {
-    redirectToLogin();
-}
-
-// Role-specific check
-if ($_SESSION['role'] !== 'community') {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You do not have permission to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a>
-          </p>";
-    exit();
-}
+include("../database.php");
 ?>
-
 
 <?php include("../includes/header.php"); ?>
 <div class="dashboard-container">
   <?php include("../includes/sidebar.php"); ?>
 
- <main class="dashboard">
-    <h2>My Submitted Reports</h2>
+  <main class="dashboard">
+    <h2>My Submitted Maintenance Reports</h2>
 
-    <table border="1" cellpadding="10" cellspacing="0">
+    <table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse: collapse;">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Borehole Name</th>
-                <th>Issue</th>
-                <th>Date Reported</th>
+                <th>Borehole</th>
+                <th>Reported Issue</th>
                 <th>Status</th>
+                <th>Date Reported</th>
+                <th>Date Completed</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Example static data -->
-            <tr>
-                <td>1</td>
-                <td>Borehole A</td>
-                <td>Pump not working</td>
-                <td>2026-01-12</td>
-                <td>Pending</td>
-            </tr>
-            <tr>
-                <td>2</td>
-                <td>Borehole B</td>
-                <td>Low water flow</td>
-                <td>2026-01-15</td>
-                <td>Completed</td>
-            </tr>
+        <?php
+        // Fetch all tasks submitted by the community
+        $stmt = $conn->prepare("
+            SELECT mt.id, b.borehole_name, mt.reported_issue, mt.status, mt.date_reported, mt.date_completed
+            FROM maintenance_tasks mt
+            JOIN boreholes b ON mt.borehole_id = b.id
+            ORDER BY mt.date_reported DESC
+        ");
+        $stmt->execute();
+        $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($tasks) {
+            foreach ($tasks as $task)
+                 {
+                echo "<tr>";
+                echo "<td>".htmlspecialchars($task['borehole_name'])."</td>";
+                echo "<td>".htmlspecialchars($task['reported_issue'])."</td>";
+                echo "<td>".htmlspecialchars($task['status'])."</td>";
+                echo "<td>".htmlspecialchars($task['date_reported'])."</td>";
+                echo "<td>".($task['date_completed'] ? htmlspecialchars($task['date_completed']) : '-') ."</td>";
+                echo "</tr>";
+            }
+        } else {
+            echo "<tr><td colspan='5' style='text-align:center;'>No reports submitted yet.</td></tr>";
+        }
+        ?>
         </tbody>
     </table>
- </main>
+  </main>
 </div>
 <?php include("../includes/footer.php"); ?>

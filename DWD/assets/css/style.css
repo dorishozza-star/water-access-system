@@ -138,6 +138,14 @@ main {
 .dashboard {
     flex-grow: 1;
     padding: 40px;
+    
+}
+
+.flex-center{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
 }
 
 /* =========================================

@@ -1,15 +1,23 @@
 <?php
 session_start();
-if ($_SESSION['role'] !== 'admin') {
+include("../database.php"); // adjust path if needed
+
+// Only admin can delete
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");
     exit();
 }
 
-/* Later:
-include database
-$id = $_GET['id'];
-DELETE FROM boreholes WHERE id = $id;
-*/
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
 
-header("Location: manage-boreholes.php");
-exit();
+    $stmt = $conn->prepare("DELETE FROM boreholes WHERE id = ?");
+    $stmt->execute([$id]);
+
+    header("Location: manage-boreholes.php"); // redirect back
+    exit();
+} else {
+    header("Location: manage-boreholes.php");
+    exit();
+}
+?>

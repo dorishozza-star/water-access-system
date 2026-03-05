@@ -1,12 +1,10 @@
 <?php
 session_start();
+include("../database.php");
 
-function redirectToLogin() {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You must log in to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a> or 
-            <a href='/DWD/login.php'>Login</a>
-          </p>";
+// Restrict access
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'technician') {
+    header("Location: ../login.php");
     exit();
 }
 
@@ -24,10 +22,22 @@ if ($_SESSION['role'] !== 'technician') {
     exit();
 }
 
+$tech_id = $_SESSION['user_id'];
 
-include("../includes/header.php");
+// Count assigned tasks
+$stmt = $conn->prepare("SELECT COUNT(*) FROM maintenance_tasks WHERE assigned_to = ?");
+$stmt->execute([$tech_id]);
+$assigned_count = $stmt->fetchColumn();
 
+// Count completed tasks
+$stmt2 = $conn->prepare("SELECT COUNT(*) FROM maintenance_tasks WHERE assigned_to = ? AND status = 'Completed'");
+$stmt2->execute([$tech_id]);
+$completed_count = $stmt2->fetchColumn();
 ?>
+
+
+
+<?php include("../includes/header.php");?>
 
 <div class = "dashboard-container"> 
 
@@ -40,34 +50,13 @@ include("../includes/header.php");
     <div class="cards">
         <div class="card">
             <h4>Assigned Maintenance Tasks</h4>
-             <p>
-            <?php 
-            // Temporary count (later from DB)
-            $assignedTasks = 5;
-            echo $assignedTasks;
-            ?>
-        </p>
+              <a href="assigned-maintenance-tasks.php">  <?= $assigned_count ?></a>
         </div>
 
+        
         <div class="card">
-            <h4>Update Borehole Status</h4>
-             <p>
-            <?php 
-            // Temporary count
-            $pendingUpdates = 3;
-            echo $pendingUpdates;
-            ?>
-        </p>
-        </div>
-        <div class="card">
-            <h4>Completed Repairs</h4>
-              <p>
-            <?php 
-            // Temporary count
-            $completedRepairs = 2;
-            echo $completedRepairs;
-            ?>
-        </p>
+            <h4>Completed Repairs:</h4>
+                    <?= $completed_count ?>
         </div>
     </div>
   </main>

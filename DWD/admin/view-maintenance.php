@@ -1,86 +1,87 @@
 <?php
 session_start();
+include("../database.php");
 
-function redirectToLogin() {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You must log in to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a> or 
-            <a href='/DWD/login.php'>Login</a>
-          </p>";
+// Restrict access
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../login.php");
     exit();
 }
 
-// Check if logged in
-if (!isset($_SESSION['role'])) {
-    redirectToLogin();
-}
+// Fetch maintenance tasks
+$stmt = $conn->query("
+    SELECT maintenance_tasks.id,
+           maintenance_tasks.reported_issue,
+           maintenance_tasks.status,
+           maintenance_tasks.date_reported,
+           maintenance_tasks.date_completed,
+           boreholes.borehole_name,
+           users.username AS technician_name
+    FROM maintenance_tasks
+    JOIN boreholes ON maintenance_tasks.borehole_id = boreholes.id
+    LEFT JOIN users ON maintenance_tasks.assigned_to = users.id
+    ORDER BY maintenance_tasks.date_reported DESC
+");
 
-// Role-specific check
-if ($_SESSION['role'] !== 'admin') {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You do not have permission to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a>
-          </p>";
-    exit();
-}
+$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<?php include("../includes/header.php"); ?>
 
 
-include("../includes/header.php");?>
 
 <div class="dashboard-container">
- <?php include("../includes/sidebar.php"); // Admin sidebar?>
-
+  <?php include("../includes/sidebar.php"); ?>
 
  <main class="dashboard">
-    <h2>Maintenance Records</h2>
+    <h2>Maintenance Tasks</h2>
 
-    <section class="card">
-        <h3>Maintenance Requests</h3>
-
+    <?php if (count($tasks) > 0): ?>
         <table border="1" cellpadding="10" cellspacing="0">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Borehole Name</th>
-                    <th>Reported Issue</th>
-                    <th>Date Reported</th>
+                    <th>Borehole</th>
+                    <th>Issue</th>
+                    <th>Technician</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th>Date Reported</th>
+                    <th>Date Completed</th>
+                    <th>Action</th>
+
                 </tr>
             </thead>
-
             <tbody>
-                <!-- Static data example (replace with DB later) -->
-                <tr>
-                    <td>1</td>
-                    <td>Borehole B</td>
-                    <td>Pump not working</td>
-                    <td>2026-01-12</td>
-                    <td>Pending</td>
-                    <td>
-                        <a href="mark-complete.php?id=1"
-                           onclick="return confirm('Mark this maintenance request as complete?');">
-                           Mark Complete
-                        </a>
-                    </td>
-                </tr>
+                <?php foreach ($tasks as $task): 
+                    $color = ($task['status']=='Pending')?'orange':(($task['status']=='Inprogress')?'blue':'green');
+                    ?>
+                    <tr>
+                        <td><?= $task['id']; ?></td>
+                        <td><?= htmlspecialchars($task['borehole_name']); ?></td>
+                        <td><?= htmlspecialchars($task['reported_issue']); ?></td>
+                        <td>
+                            <?= $task['technician_name'] ? htmlspecialchars($task['technician_name']) : 'Not Assigned'; ?>
+                        </td>
+                        <td><?= $task['status']; ?></td>
+                        <td><?= $task['date_reported']; ?></td>
+                        <td><?= $task['date_completed'] ?? '—'; ?></td>
+                        <td>
+                          <?php if (!$task['technician_name']) : ?>
+                          <a href="assign-technician.php?id=<?= $task['id']; ?>">
+                           Assign Technician
+                             </a>
+                          <?php else: ?>
+                              Assigned
+                          <?php endif; ?>
+                       </td>
 
-                <tr>
-                    <td>2</td>
-                    <td>Borehole A</td>
-                    <td>Water leakage</td>
-                    <td>2026-01-14</td>
-                    <td>In Progress</td>
-                    <td>
-                        <a href="mark-complete.php?id=2"
-                           onclick="return confirm('Mark this maintenance request as complete?');">
-                           Mark Complete
-                        </a>
-                    </td>
-                </tr>
+                    </tr>
+                <?php endforeach; ?>
             </tbody>
         </table>
-    </section>
+    <?php else: ?>
+        <p>No maintenance tasks found.</p>
+    <?php endif; ?>
  </main>
 </div>
 <?php include("../includes/footer.php"); ?>

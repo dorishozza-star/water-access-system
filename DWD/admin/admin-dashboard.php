@@ -1,48 +1,51 @@
 <?php
 session_start();
+include("../database.php");
 
-function redirectToLogin() {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You must log in to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a> or 
-            <a href='/DWD/login.php'>Login</a>
-          </p>";
-    exit();
-}
-
-// Check if logged in
-if (!isset($_SESSION['role'])) {
-    redirectToLogin();
-}
-
-// Role-specific check
-if ($_SESSION['role'] !== 'admin') {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You do not have permission to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a>
-          </p>";
+// -------------------- Access Control --------------------
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../login.php");
     exit();
 }
 ?>
 
-
 <?php include("../includes/header.php"); ?>
 <div class="dashboard-container">
+    <?php include("../includes/sidebar.php"); ?>
 
-<?php include("../includes/sidebar.php"); ?>
+    <main class="dashboard">
+        <h2>Admin Dashboard</h2>
 
+        <!-- ================= Summary Cards ================= -->
+        <div class="cards" style="display:flex; gap:15px; margin-bottom:20px;">
+            <div class="card" id="totalBoreholes">Total Boreholes: 0</div>
+            <div class="card" id="activeBoreholes" style="color:green;">Active Boreholes: 0</div>
+            <div class="card" id="faultyBoreholes" style="color:red;">Faulty Boreholes: 0</div>
+            <div class="card" id="pendingMaintenance" style="color:orange;">Pending Maintenance: 0</div>
+        </div>
 
+       
 
- <main class="dashboard">
-    
-    <h2>Admin Dashboard</h2>
-
-    <div class="cards">
-        <div class="card">Total Boreholes</div>
-        <div class="card">Active Boreholes</div>
-        <div class="card">Faulty Boreholes</div>
-        <div class="card"> Pending Maintenance</div>
-    </div>
- </main>
+    </main>
 </div>
 <?php include("../includes/footer.php"); ?>
+
+<!-- ================= AJAX for Dynamic Cards ================= -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+function updateCards() {
+    $.getJSON('summary_counts.php', function(data) {
+        $('#totalBoreholes').text('Total Boreholes: ' + data.total);
+        $('#activeBoreholes').text('Active Boreholes: ' + data.active);
+        $('#faultyBoreholes').text('Faulty Boreholes: ' + data.faulty);
+        $('#pendingMaintenance').text('Pending Maintenance: ' + data.pending);
+    });
+}
+
+// Initial load
+updateCards();
+
+// Refresh every 5 seconds
+setInterval(updateCards, 5000);
+</script>
+

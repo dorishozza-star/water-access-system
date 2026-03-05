@@ -1,93 +1,128 @@
 <?php
 session_start();
+include("../database.php");
 
-function redirectToLogin() {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You must log in to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a> or 
-            <a href='/DWD/login.php'>Login</a>
-          </p>";
+// Restrict access
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'technician') {
+    header("Location: ../login.php");
     exit();
 }
 
-// Check if logged in
-if (!isset($_SESSION['role'])) {
-    redirectToLogin();
-}
+$tech_id = $_SESSION['user_id'];
 
-// Role-specific check
-if ($_SESSION['role'] !== 'technician') {
-    echo "<p style='text-align:center; margin-top:50px; font-family:Arial;'>
-            You do not have permission to access this page. <br>
-            <a href='/DWD/index.php'>Go to Home Page</a>
-          </p>";
-    exit();
-}
+// Fetch counts for dashboard cards
+$stmtTotal = $conn->prepare("SELECT COUNT(*) as total FROM maintenance_tasks WHERE assigned_to = ?");
+$stmtTotal->execute([$tech_id]);
+$totalTasks = $stmtTotal->fetch(PDO::FETCH_ASSOC)['total'];
+
+$stmtInProgress = $conn->prepare("SELECT COUNT(*) as in_progress FROM maintenance_tasks WHERE assigned_to = ? AND status='In progress'");
+$stmtInProgress->execute([$tech_id]);
+$inProgress = $stmtInProgress->fetch(PDO::FETCH_ASSOC)['in_progress'];
+
+$stmtCompleted = $conn->prepare("SELECT COUNT(*) as completed FROM maintenance_tasks WHERE assigned_to = ? AND status='Completed'");
+$stmtCompleted->execute([$tech_id]);
+$completed = $stmtCompleted->fetch(PDO::FETCH_ASSOC)['completed'];
+
+// Fetch assigned tasks
+$stmt = $conn->prepare("
+    SELECT mt.id, mt.reported_issue, mt.status, mt.date_reported, mt.date_completed,
+           b.borehole_name
+    FROM maintenance_tasks mt
+    JOIN boreholes b ON mt.borehole_id = b.id
+    WHERE mt.assigned_to = ?
+    ORDER BY mt.date_reported DESC
+");
+$stmt->execute([$tech_id]);
+$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-
 <?php include("../includes/header.php"); ?>
-
 <div class="dashboard-container">
-  <?php include("../includes/sidebar.php"); ?>
+    <?php include("../includes/sidebar.php"); ?>
 
- <main class="dashboard">
-    <h2>Update Borehole Status</h2>
+    <main class="dashboard">
+        
 
-    <p>List of Boreholes assigned to you (example static data).</p>
+        
 
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Borehole Name</th>
-                <th>Current Status</th>
-                <th>Update Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Example data -->
-            <tr>
-                <td>1</td>
-                <td>Borehole A</td>
-                <td>Working</td>
-                <td>
-                    <form method="POST" action="">
-                        <select name="status">
-                            <option value="Working">Working</option>
-                            <option value="Faulty">Faulty</option>
-                        </select>
-                        <button type="submit" name="update_status">Update</button>
-                    </form>
-                </td>
-            </tr>
+        <!-- Tasks Table -->
+        <h2>Assigned Maintenance Tasks</h2>
+        <?php if(count($tasks) > 0): ?>
+            <table border="1" cellpadding="10" style="width:100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Borehole</th>
+                        <th>Issue</th>
+                        <th>Current Status</th>
+                        <th>Update Status</th>
+                        <th>Date Reported</th>
+                        <th>Date Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($tasks as $task): 
+                        $status = $task['status'] ?? 'Pending';
+                        $color = ($status=='Pending')?'orange':(($status=='In progress')?'blue':'green');
+                    ?>
+                        <tr>
+                            <td><?= $task['id']; ?></td>
+                            <td><?= htmlspecialchars($task['borehole_name']); ?></td>
+                            <td><?= htmlspecialchars($task['reported_issue']); ?></td>
 
-            <tr>
-                <td>2</td>
-                <td>Borehole B</td>
-                <td>Faulty</td>
-                <td>
-                    <form method="POST" action="">
-                        <select name="status">
-                            <option value="Working">Working</option>
-                            <option value="Faulty">Faulty</option>
-                        </select>
-                        <button type="submit" name="update_status">Update</button>
-                    </form>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+                            <!-- Current Status -->
+                            <td class="current-status" data-id="<?= $task['id']; ?>" style="color:<?= $color ?>; font-weight:bold;"><?= htmlspecialchars($status); ?></td>
 
-    <?php
-    // Temporary status update handler (without DB)
-    if (isset($_POST['update_status'])) {
-        $newStatus = $_POST['status'] ?? '';
-        if ($newStatus) {
-            echo "<p style='color:green;'>Status updated to: " . htmlspecialchars($newStatus) . "</p>";
-        }
-    }
-    ?>
- </main>
+                            <!-- Update Status Dropdown -->
+                            <td>
+                                <select class="update-status" data-id="<?= $task['id']; ?>" style="color:<?= $color ?>; font-weight:bold;">
+                                    <option value="Pending" <?= $status=='Pending'?'selected':'' ?>>Pending</option>
+                                    <option value="In progress" <?= $status=='In progress'?'selected':'' ?>>In progress</option>
+                                    <option value="Completed" <?= $status=='Completed'?'selected':'' ?>>Completed</option>
+                                </select>
+                            </td>
+
+                            <td><?= $task['date_reported']; ?></td>
+                            <td><?= $task['date_completed'] ?? '—'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p>No assigned tasks yet.</p>
+        <?php endif; ?>
+    </main>
 </div>
+
+<script>
+// AJAX status update
+document.querySelectorAll('.update-status').forEach(select => {
+    select.addEventListener('change', function(){
+        const taskId = this.dataset.id;
+        const status = this.value;
+        const currentCell = document.querySelector(`.current-status[data-id='${taskId}']`);
+
+        fetch('update-status.php', {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: `task_id=${taskId}&status=${encodeURIComponent(status)}`
+        })
+        .then(res => res.text())
+        .then(data => {
+            // Update current status cell dynamically
+            currentCell.textContent = status;
+
+            // Change color dynamically
+            let color = 'black';
+            if(status=='Pending') color='orange';
+            else if(status=='In progress') color='blue';
+            else if(status=='Completed') color='green';
+            currentCell.style.color = color;
+            this.style.color = color;
+        })
+        .catch(err => alert('Error updating status'));
+    });
+});
+</script>
+
 <?php include("../includes/footer.php"); ?>

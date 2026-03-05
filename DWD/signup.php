@@ -1,23 +1,69 @@
+<?php
+include("database.php");
+
+if(isset($_POST['signup'])){
+
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+    $role = "community";
+
+    if(!empty($username) && !empty($password)){
+
+        // Check if username already exists
+        $check = $conn->prepare("SELECT id FROM users WHERE username = :username");
+        $check->bindParam(":username", $username);
+        $check->execute();
+
+        if($check->rowCount() > 0){
+
+            $error = "Username already exists.";
+
+        } else {
+
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $conn->prepare("INSERT INTO users (username, password, role) 
+                                    VALUES (:username, :password, :role)");
+
+            $stmt->bindParam(":username", $username);
+            $stmt->bindParam(":password", $hashed_password);
+            $stmt->bindParam(":role", $role);
+
+            $stmt->execute();
+
+            // Redirect to login page with success message
+            header("Location: login.php?registered=success");
+            exit();
+        }
+
+    } else {
+        $error = "All fields are required.";
+    }
+}
+?>
+
+
+
+
 <?php include("includes/header.php"); ?>
 
-<main class="form-container">
-    <h2>Sign Up</h2>
+       <main class="form-container">
+                 <h2>Community Registration</h2>
+              <?php 
+                if(isset($error)){
+                     echo "<p style='color:red;'>$error</p>";
+                             }
+                             ?>
+             <div class = "login-box">
+                      <form method="POST" autocomplete="off" >
+                        <input type="text" name="username" placeholder="Enter Username" autocomplete="off" required><br><br>
+                        <input type="password" name="password" placeholder="Enter Password" autocomplete="new-password" required><br><br>
+                        <button type="submit" name="signup">Sign Up</button>
 
-    <form method="post" action="">
-        <input type="text" name="fullname" placeholder="Full Name" required>
-        <input type="text" name="username" placeholder="Username" required>
-        <input type="email" name="email" placeholder="Email Address" required>
-        <input type="password" name="password" placeholder="Password" required>
-        <input type="password" name="confirm_password" placeholder="Confirm Password" required>
-        <button type="submit">Register</button>
-    </form>
-
-    <p style="margin-top:15px; text-align:center;">
-        Already have an account?
-        <a href="login.php" style="color:#0a6ebd; font-weight:bold;">
-            Login here
-        </a>
-    </p>
-</main>
+                        <br><br>
+                       <a href="login.php">Already have an account? Login</a>
+                      </form>
+             </div>      
+        </main>
 
 <?php include("includes/footer.php"); ?>

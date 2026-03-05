@@ -11,7 +11,9 @@ if (session_status() === PHP_SESSION_NONE) {
             <li><a href="admin-dashboard.php">Dashboard</a></li>
             <li><a href="manage-boreholes.php">Manage Boreholes</a></li>
             <li><a href="view-maintenance.php">View Maintenance</a></li>
-            <li><a href="reports.php">Reports</a></li>
+            <li><a href="reports & analytics.php">Reports & Analytics</a></li>
+            <li><a href="manage_users.php">Manage Users</a></li>
+             <li><a href="add_user.php">Add User</a></li>
         <?php elseif ($_SESSION['role'] === 'technician'): ?>
             <li><a href="technician-dashboard.php">Dashboard</a></li>
             <li><a href="assigned-maintenance-tasks.php">Assigned Maintenance</a></li>
